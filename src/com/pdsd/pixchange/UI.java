@@ -17,7 +17,7 @@ public class UI extends Activity {
 	// UI elements
 	private Button shareButton;
 
-	// local variables
+	// locals
 	private Boolean running = false;
 
 	private class ShareButtonListener implements OnClickListener {
@@ -27,20 +27,20 @@ public class UI extends Activity {
 			if (!running) {
 				running = true;
 				shareButton.setText(R.string.stop_share_label);
-				Log.d(TAG, "started sharing");
 
+				// start receiver service
 				startService(new Intent(v.getContext(), ReceiverService.class));
 
-				// TODO: start sharing thread
+				// TODO: start transmitter service
 				// TODO: start timeout thread
 			} else {
 				running = false;
 				shareButton.setText(R.string.start_share_label);
-				Log.d(TAG, "stopped sharing");
 
+				// stop receiver service
 				stopService(new Intent(v.getContext(), ReceiverService.class));
-
-				// TODO: stop sharing thread
+				
+				// TODO: start transmitter service
 			}
 
 		}
