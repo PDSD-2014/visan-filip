@@ -1,6 +1,10 @@
 package com.pdsd.pixchange;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.ActivityManager.RunningServiceInfo;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -14,27 +18,48 @@ public class UI extends Activity {
 	private Button shareButton;
 
 	// local variables
-	private Boolean sharing = false;
+	private Boolean running = false;
 
 	private class ShareButtonListener implements OnClickListener {
 
 		@Override
 		public void onClick(View v) {
-			if (!sharing) {
-				sharing = true;
+			if (!running) {
+				running = true;
 				shareButton.setText(R.string.stop_share_label);
 				Log.d(TAG, "started sharing");
+
+				startService(new Intent(v.getContext(), ReceiverService.class));
 
 				// TODO: start sharing thread
 				// TODO: start timeout thread
 			} else {
-				sharing = false;
+				running = false;
 				shareButton.setText(R.string.start_share_label);
 				Log.d(TAG, "stopped sharing");
 
+				stopService(new Intent(v.getContext(), ReceiverService.class));
+
 				// TODO: stop sharing thread
 			}
+
 		}
+	}
+
+	/**
+	 * Check whether a specific service is running or not
+	 * 
+	 * @param cls the service's class
+	 * @return true is running, false if not
+	 */
+	private boolean isServiceRunning(Class<?> cls) {
+		ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+		for (RunningServiceInfo service : manager
+				.getRunningServices(Integer.MAX_VALUE))
+			if (cls.getName().equals(service.service.getClassName()))
+				return true;
+
+		return false;
 	}
 
 	@Override
@@ -42,38 +67,15 @@ public class UI extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_ui);
 
-		// get saved data
-		if(savedInstanceState != null) {
-			sharing = savedInstanceState.getBoolean("sharing");
-		}
+		// check if ReceiverService is running
+		running = isServiceRunning(ReceiverService.class);
 		
-		// initialize share button
+		// initialize UI
 		shareButton = (Button) findViewById(R.id.share_button);
 		shareButton.setOnClickListener(new ShareButtonListener());
-		if (!sharing)
+		if (!running)
 			shareButton.setText(R.string.start_share_label);
 		else
 			shareButton.setText(R.string.stop_share_label);
-
-	}
-
-	@Override
-	public void onSaveInstanceState(Bundle savedInstanceState) {
-		super.onSaveInstanceState(savedInstanceState);
-
-		// save current sharing state
-		savedInstanceState.putBoolean("sharing", sharing);
-
-		// TODO: save other useful stuff
-	}
-
-	@Override
-	public void onRestoreInstanceState(Bundle savedInstanceState) {
-		super.onRestoreInstanceState(savedInstanceState);
-
-		// restore sharing state
-		sharing = savedInstanceState.getBoolean("sharing");
-
-		// TODO: restore other useful stuff
 	}
 }
