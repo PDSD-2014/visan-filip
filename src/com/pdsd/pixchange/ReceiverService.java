@@ -25,24 +25,28 @@ public class ReceiverService extends Service {
 		@Override
 		public void onChange(boolean selfChange) {
 			super.onChange(selfChange);
-			//Media media = readFromMediaStore(getApplicationContext(),
-			//		MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+			// Media media = readFromMediaStore(getApplicationContext(),
+			// MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
 			Log.d(TAG, "New photo!");
 		}
 	}
 
 	@Override
-	public void onCreate() {		
+	public void onCreate() {
 		this.getApplicationContext()
 				.getContentResolver()
 				.registerContentObserver(
 						MediaStore.Images.Media.EXTERNAL_CONTENT_URI, false,
 						photoObserver);
+
 		Log.d(TAG, "ReceiverService started");
 	}
 
 	@Override
 	public void onDestroy() {
+		this.getApplicationContext().getContentResolver()
+				.unregisterContentObserver(photoObserver);
+
 		Log.d(TAG, "ReceiverService stopped");
 	}
 
