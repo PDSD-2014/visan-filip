@@ -6,10 +6,12 @@ import java.util.Iterator;
 import java.util.List;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
 import android.os.IBinder;
 import android.provider.MediaStore;
 import android.provider.MediaStore.MediaColumns;
@@ -19,13 +21,31 @@ public class ReceiverService extends Service {
 	private static final String TAG = "PixchangeReceiverService";
 
 	// locals
+	private String ID;
 	private PhotoObserver observer;
-	List<File> toShare;
+	List<Photo> toShare;
 	private Boolean run = true;
+
+	private class Photo {
+		private File file;
+		private String owner;
+
+		public Photo(File file, String owner) {
+			this.file = file;
+			this.owner = owner;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			Photo p = (Photo) o;
+
+			return ((file.equals(p.file)) && (owner == p.owner));
+		}
+	}
 
 	private class PhotoObserver extends ContentObserver {
 		Uri observing;
-		List<File> photos;
+		List<Photo> photos;
 
 		/**
 		 * Create a new PhotoObserver object AND register it to the specified
@@ -41,7 +61,7 @@ public class ReceiverService extends Service {
 		 * @param photos
 		 *            A list where to place new photos
 		 */
-		public PhotoObserver(Uri observing, boolean notify, List<File> photos) {
+		public PhotoObserver(Uri observing, boolean notify, List<Photo> photos) {
 			super(null);
 
 			this.observing = observing;
@@ -59,7 +79,7 @@ public class ReceiverService extends Service {
 			// unregister
 			getApplicationContext().getContentResolver()
 					.unregisterContentObserver(this);
-			
+
 			observing = null;
 			photos = null;
 		}
@@ -69,12 +89,12 @@ public class ReceiverService extends Service {
 			super.onChange(selfChange);
 
 			// get new photo
-			File photo = getPhoto();
+			Photo photo = getPhoto();
 			if (photo != null) {
 				// put new photo in photos list
 				photos.add(photo);
 
-				Log.d(TAG, "New photo " + photo.getName());
+				Log.d(TAG, "New photo " + photo.file.getName());
 			}
 		}
 
@@ -83,8 +103,8 @@ public class ReceiverService extends Service {
 		 * 
 		 * @return The last photo (in order of date added) from the URI
 		 */
-		private File getPhoto() {
-			File photo = null;
+		private Photo getPhoto() {
+			Photo photo = null;
 			String[] projection = { MediaColumns.DATA };
 			Cursor cursor = getContentResolver().query(observing, projection,
 					null, null, "date_added DESC");
@@ -101,7 +121,7 @@ public class ReceiverService extends Service {
 			}
 
 			if (cursor.moveToNext())
-				photo = new File(cursor.getString(0));
+				photo = new Photo(new File(cursor.getString(0)), ID);
 
 			cursor.close();
 			return photo;
@@ -110,14 +130,19 @@ public class ReceiverService extends Service {
 
 	@Override
 	public void onCreate() {
+		// get the devices wifi MAC address to use as the identifier for this device
+		WifiManager manager = (WifiManager)getSystemService(Context.WIFI_SERVICE);  
+		ID = manager.getConnectionInfo().getMacAddress();
+		
 		// create a list to store which photos to share
-		toShare = new ArrayList<File>();
+		toShare = new ArrayList<Photo>();
 
 		// register a ContentObserver that will trigger on a new image having
 		// been taken with the device's camera
 		observer = new PhotoObserver(
 				MediaStore.Images.Media.EXTERNAL_CONTENT_URI, false, toShare);
 
+		// TODO: register a file observer to detect when a file is deleted
 		// TODO: get photos via other devices
 
 		Log.d(TAG, "ReceiverService started");
@@ -127,15 +152,15 @@ public class ReceiverService extends Service {
 	public void onDestroy() {
 		// unregister observer
 		observer.unregister();
-		
+
 		// TODO: remove this
-		Iterator<File> it = toShare.iterator();
-		
+		Iterator<Photo> it = toShare.iterator();
+
 		Log.d(TAG, "Photos list:");
-		while(it.hasNext()) {
-			Log.d(TAG, "\t" + it.next().getName());
+		while (it.hasNext()) {
+			Log.d(TAG, "\t" + it.next().file.getName());
 		}
-		
+
 		Log.d(TAG, "ReceiverService stopped");
 	}
 
