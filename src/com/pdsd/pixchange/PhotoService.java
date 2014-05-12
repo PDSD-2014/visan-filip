@@ -17,15 +17,14 @@ import android.provider.MediaStore;
 import android.provider.MediaStore.MediaColumns;
 import android.util.Log;
 
-public class ReceiverService extends Service {
-	private static final String TAG = "PixchangeReceiverService";
+public class PhotoService extends Service {
+	private static final String TAG = "PhotoService";
 
 	// locals
 	private String ID;
 	private PhotoObserver observer;
-	List<Photo> toShare;
-	private Boolean run = true;
-
+	private List<Photo> toShare;
+	
 	private class Photo {
 		private File file;
 		private String owner;
@@ -42,6 +41,7 @@ public class ReceiverService extends Service {
 			return ((file.equals(p.file)) && (owner == p.owner));
 		}
 	}
+	
 
 	private class PhotoObserver extends ContentObserver {
 		Uri observing;
@@ -91,6 +91,7 @@ public class ReceiverService extends Service {
 			// get new photo
 			Photo photo = getPhoto();
 			if (photo != null) {
+				// TODO: delayed
 				// put new photo in photos list
 				photos.add(photo);
 

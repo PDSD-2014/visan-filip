@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -14,8 +15,14 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.Toast;
 
-public class UI extends Activity {
-	private static final String TAG = "PixchangeUI";
+/**
+ * UI activity for Pixchange application
+ * 
+ * @author tudor
+ * 
+ */
+public class Pixchange extends Activity {
+	private static final String TAG = "Pixchange";
 
 	// UI elements
 	private Button shareButton;
@@ -23,56 +30,72 @@ public class UI extends Activity {
 	// locals
 	private Boolean running = false;
 
+	/**
+	 * Listener class for the start/stop share button
+	 * 
+	 * @author tudor
+	 * 
+	 */
 	private class ShareButtonListener implements OnClickListener {
 
 		@Override
 		public void onClick(View v) {
 			if (!running) {
-				ConnectivityManager manager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-				NetworkInfo wifiInfo = manager
+				ConnectivityManager conManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+				WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+				NetworkInfo netInfo = conManager
 						.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
 
-				// check if wifi is turned on
-				if (!wifiInfo.isAvailable()) {
+				// check if wifi exists
+				if (wifiManager == null || netInfo == null) {
 					Toast.makeText(v.getContext(),
-							"Wifi is currently disabled.", Toast.LENGTH_SHORT)
-							.show();
-					Toast.makeText(
-							v.getContext(),
-							"Please turn it on and connect to a network in order start sharing.",
-							Toast.LENGTH_LONG).show();
+							"Error detecting wifi on your device",
+							Toast.LENGTH_SHORT);
 
-					Log.d(TAG, "Attempted to start share while wifi was off.");
+					Log.e(TAG, "No wifi detected on device");
 				} else {
-					// check if wifi is connected
-					if (!wifiInfo.isConnected()) {
+					// check is wifi is enabled
+					if (!wifiManager.isWifiEnabled()) {
+						Toast.makeText(v.getContext(),
+								"Wifi is currently disabled.",
+								Toast.LENGTH_SHORT).show();
 						Toast.makeText(
 								v.getContext(),
-								"Please connect to a network in order start sharing.",
+								"Please turn on wifi and connect to a network in order start sharing.",
 								Toast.LENGTH_LONG).show();
 
 						Log.d(TAG,
-								"Attempted to start share while wifi was disconnected.");
+								"Attempted to start share while wifi was off.");
 					} else {
-						// start receiver service
-						startService(new Intent(v.getContext(),
-								ReceiverService.class));
+						// check if wifi is connected
+						if (!netInfo.isConnected()) {
+							Toast.makeText(
+									v.getContext(),
+									"Please connect to a network in order start sharing.",
+									Toast.LENGTH_LONG).show();
 
-						running = true;
-						shareButton.setText(R.string.stop_share_label);
+							Log.d(TAG,
+									"Attempted to start share while wifi was disconnected.");
+						} else {
+							// start receiver service
+							startService(new Intent(v.getContext(),
+									PhotoService.class));
 
-						// TODO: start transmitter service
-						// TODO: start timeout thread
+							// TODO: start transmitter service
+
+							running = true;
+							shareButton.setText(R.string.stop_share_label);
+						}
 					}
 				}
 			} else {
 				// stop receiver service
-				stopService(new Intent(v.getContext(), ReceiverService.class));
+				stopService(new Intent(v.getContext(), PhotoService.class));
+
+				// TODO: stop transmitter service
 
 				running = false;
 				shareButton.setText(R.string.start_share_label);
-
-				// TODO: stop transmitter service
 			}
 		}
 	}
@@ -100,7 +123,7 @@ public class UI extends Activity {
 		setContentView(R.layout.activity_ui);
 
 		// check if ReceiverService is running
-		running = isServiceRunning(ReceiverService.class);
+		running = isServiceRunning(PhotoService.class);
 
 		// initialize UI
 		shareButton = (Button) findViewById(R.id.share_button);

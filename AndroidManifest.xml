@@ -18,7 +18,7 @@
         android:label="@string/app_name"
         android:theme="@android:style/Theme.NoTitleBar" >
         <activity
-            android:name="com.pdsd.pixchange.UI"
+            android:name="com.pdsd.pixchange.Pixchange"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -32,9 +32,15 @@
         </activity>
 
         <service
-            android:name=".ReceiverService"
+            android:name=".PhotoService"
             android:label="Pixchange receiver service" >
         </service>
+
+        <receiver android:name=".WifiReceiver" >
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
