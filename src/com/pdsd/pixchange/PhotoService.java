@@ -2,20 +2,23 @@ package com.pdsd.pixchange;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
+import android.app.Activity;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
+import android.os.Handler;
 import android.os.IBinder;
 import android.provider.MediaStore;
 import android.provider.MediaStore.MediaColumns;
 import android.util.Log;
+import android.widget.Button;
 
 public class PhotoService extends Service {
 	private static final String TAG = "PhotoService";
@@ -23,8 +26,10 @@ public class PhotoService extends Service {
 	// locals
 	private String ID;
 	private PhotoObserver observer;
+	private WifiReceiver receiver;
+	protected static Activity parentActivity;
 	private List<Photo> toShare;
-	
+
 	private class Photo {
 		private File file;
 		private String owner;
@@ -41,11 +46,42 @@ public class PhotoService extends Service {
 			return ((file.equals(p.file)) && (owner == p.owner));
 		}
 	}
-	
 
 	private class PhotoObserver extends ContentObserver {
 		Uri observing;
 		List<Photo> photos;
+
+		private class PhotoQueuer implements Runnable {
+			private Photo photo;
+
+			private class PhotoQueuerHelper implements Runnable {
+				Photo photo;
+
+				public PhotoQueuerHelper(Photo photo) {
+					this.photo = photo;
+				}
+
+				@Override
+				public void run() {
+					if(photo.file.exists()) {
+						photos.add(photo);
+
+						Log.d(TAG, "Photo " + photo.file.getName() + " queued");
+					} else {
+						Log.d(TAG, "Photo " + photo.file.getName() + " discarded");
+					}
+				}
+			}
+
+			public PhotoQueuer(Photo photo) {
+				this.photo = photo;
+			}
+
+			@Override
+			public void run() {
+				new Handler().postDelayed(new PhotoQueuerHelper(photo), 5000);
+			}
+		}
 
 		/**
 		 * Create a new PhotoObserver object AND register it to the specified
@@ -91,11 +127,10 @@ public class PhotoService extends Service {
 			// get new photo
 			Photo photo = getPhoto();
 			if (photo != null) {
-				// TODO: delayed
-				// put new photo in photos list
-				photos.add(photo);
-
 				Log.d(TAG, "New photo " + photo.file.getName());
+
+				// put new photo in share list
+				parentActivity.runOnUiThread(new PhotoQueuer(photo));
 			}
 		}
 
@@ -131,19 +166,25 @@ public class PhotoService extends Service {
 
 	@Override
 	public void onCreate() {
-		// get the devices wifi MAC address to use as the identifier for this device
-		WifiManager manager = (WifiManager)getSystemService(Context.WIFI_SERVICE);  
+		// get the devices wifi MAC address to use as the identifier for this
+		// device
+		WifiManager manager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
 		ID = manager.getConnectionInfo().getMacAddress();
-		
+
 		// create a list to store which photos to share
 		toShare = new ArrayList<Photo>();
+
+		// register a BroadcastReceiver that will trigger when wifi
+		// connects/disconnects
+		receiver = new WifiReceiver();
+		registerReceiver(receiver, new IntentFilter(
+				"android.net.conn.CONNECTIVITY_CHANGE"));
 
 		// register a ContentObserver that will trigger on a new image having
 		// been taken with the device's camera
 		observer = new PhotoObserver(
 				MediaStore.Images.Media.EXTERNAL_CONTENT_URI, false, toShare);
 
-		// TODO: register a file observer to detect when a file is deleted
 		// TODO: get photos via other devices
 
 		Log.d(TAG, "ReceiverService started");
@@ -151,16 +192,16 @@ public class PhotoService extends Service {
 
 	@Override
 	public void onDestroy() {
-		// unregister observer
+		// unregister WifiReceiver
+		unregisterReceiver(receiver);
+
+		// unregister PhotoObserver
 		observer.unregister();
 
-		// TODO: remove this
-		Iterator<Photo> it = toShare.iterator();
-
-		Log.d(TAG, "Photos list:");
-		while (it.hasNext()) {
-			Log.d(TAG, "\t" + it.next().file.getName());
-		}
+		// change shareButton text
+		Button shareButton = (Button) parentActivity
+				.findViewById(R.id.share_button);
+		shareButton.setText(R.string.start_share_label);
 
 		Log.d(TAG, "ReceiverService stopped");
 	}

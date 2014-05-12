@@ -35,12 +35,6 @@
             android:name=".PhotoService"
             android:label="Pixchange receiver service" >
         </service>
-
-        <receiver android:name=".WifiReceiver" >
-            <intent-filter>
-                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
-            </intent-filter>
-        </receiver>
     </application>
 
 </manifest>

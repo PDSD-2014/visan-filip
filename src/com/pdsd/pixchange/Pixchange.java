@@ -83,6 +83,7 @@ public class Pixchange extends Activity {
 							// start receiver service
 							startService(new Intent(v.getContext(),
 									PhotoService.class));
+							PhotoService.parentActivity = Pixchange.this;
 
 							// TODO: start transmitter service
 

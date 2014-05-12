@@ -18,7 +18,7 @@ public class WifiReceiver extends BroadcastReceiver {
 	private static final String TAG = "WifiReceiver";
 
 	// locals
-	private static boolean previouslyConnected = true;	// the receiver won't be
+	private static boolean previouslyConnected = true; // the receiver won't be
 														// started until there
 														// is an active
 														// connection
@@ -35,7 +35,7 @@ public class WifiReceiver extends BroadcastReceiver {
 
 			// stop PhotoService
 			context.stopService(new Intent(context, PhotoService.class));
-			
+
 			// TODO: stop OtherService
 		}
 	};
@@ -55,7 +55,7 @@ public class WifiReceiver extends BroadcastReceiver {
 
 				// stop timeout
 				stopTimeout();
-				
+
 				// TODO: start share round
 			} else if (!netInfo.isConnected() && previouslyConnected) {
 				Log.d(TAG, "Wifi disconnected");
