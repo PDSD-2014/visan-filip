@@ -25,7 +25,7 @@ public class WifiReceiver extends BroadcastReceiver {
 														// so this starts out as
 														// true
 	private static Context context;
-	private static final long timeout = 5 * 60 * 1000; // 5 minutes
+	private static final long timeout = 5 * 60 * 1000;	// 5 minutes
 	private static final Handler timeoutHandler = new Handler();
 	private static final Runnable timeoutCallback = new Runnable() {
 
@@ -35,6 +35,8 @@ public class WifiReceiver extends BroadcastReceiver {
 
 			// stop PhotoService
 			context.stopService(new Intent(context, PhotoService.class));
+			
+			// TODO: stop OtherService
 		}
 	};
 

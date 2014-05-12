@@ -1,14 +1,10 @@
 package com.pdsd.pixchange;
 
-
-import com.example.proiectpdsd.R;
-
-import android.net.wifi.WifiManager;
-import android.os.Bundle;
 import android.app.Activity;
 import android.content.Context;
+import android.net.wifi.WifiManager;
+import android.os.Bundle;
 import android.util.Log;
-import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -32,13 +28,6 @@ public class MainActivity extends Activity {
 		Button b1 = (Button)findViewById(R.id.broadcastReply);
 		b1.setOnClickListener(new ButtonListener());
 		
-	}
-
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.main, menu);
-		return true;
 	}
 	
 	@Override

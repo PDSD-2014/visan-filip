@@ -26,6 +26,9 @@ public class Pixchange extends Activity {
 
 	// UI elements
 	private Button shareButton;
+	
+	// TODO: remove this
+	private Button DEBUG;
 
 	// locals
 	private Boolean running = false;
@@ -132,5 +135,15 @@ public class Pixchange extends Activity {
 			shareButton.setText(R.string.start_share_label);
 		else
 			shareButton.setText(R.string.stop_share_label);
+		
+		// TODO: remove this
+		DEBUG = (Button)findViewById(R.id.DEBUG);
+		DEBUG.setOnClickListener(new OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				startActivity(new Intent(v.getContext(), MainActivity.class));
+			}
+		});
 	}
 }
