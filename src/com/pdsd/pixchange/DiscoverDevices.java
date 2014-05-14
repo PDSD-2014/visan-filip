@@ -62,7 +62,7 @@ public class DiscoverDevices extends Thread {
    */
   protected void sendDiscoveryRequest(DatagramSocket socket) throws IOException {
     BroadcastMessage bm = new BroadcastMessage();
-    bm.setInfo("LG message");
+    bm.setInfo("received broadcast");
     bm.setAddress(InetAddress.getLocalHost());
     Log.d(TAG, "Sending data " + bm.getMessageType());
     
