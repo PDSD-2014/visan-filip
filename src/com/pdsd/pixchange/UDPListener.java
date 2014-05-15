@@ -22,7 +22,7 @@ import android.net.wifi.WifiManager;
 import android.util.Log;
 
 
-public class DiscoverDevices extends Thread {
+public class UDPListener extends Thread {
 	
   protected static final int DISCOVERY_PORT = 9080;
   protected static final int TIMEOUT_MS = 2000;
@@ -30,33 +30,44 @@ public class DiscoverDevices extends Thread {
   protected boolean isRunning = true;
   protected DatagramSocket socket = null;
   private static WifiManager mWifi;
-  protected Activity context = null;
 
-  public DiscoverDevices(WifiManager wifi, Activity context) {
+  public UDPListener(WifiManager wifi) {
 	  mWifi = wifi;
-	  this.context = context;
   }
   
   
   public void run() {
-    try {
-      isRunning = true;
-      socket = new DatagramSocket(DISCOVERY_PORT);
-      socket.setBroadcast(true);
-      socket.setSoTimeout(TIMEOUT_MS);
-
-      sendDiscoveryRequest(socket);
-      listenForResponses(socket);
-      socket.close();
-      Log.d(TAG, "No errors when sending broadcast");
-    } catch (BindException b) {
-    	if (socket != null)
-    		socket.close();
-    } catch (IOException e) {
-    	Log.e(TAG, "Could not send discovery request", e);
-    }
+	  while (true) {
+		  try {
+			socket = new DatagramSocket(DISCOVERY_PORT);
+		    socket.setBroadcast(true);
+			listenForResponses(socket);
+			sendUDPBroadcast();
+		  } catch (IOException e) {
+			e.printStackTrace();
+		  }
+	  }
   }
 
+  protected void sendUDPBroadcast() {
+	  try {
+	      isRunning = true;
+	      socket = new DatagramSocket(DISCOVERY_PORT);
+	      socket.setBroadcast(true);
+	      socket.setSoTimeout(TIMEOUT_MS);
+
+	      sendDiscoveryRequest(socket);
+	      listenForResponses(socket);
+	      socket.close();
+	      Log.d(TAG, "No errors when sending broadcast");
+	    } catch (BindException b) {
+	    	if (socket != null)
+	    		socket.close();
+	    } catch (IOException e) {
+	    	Log.e(TAG, "Could not send discovery request", e);
+	    }
+  }
+  
   /**
    * Send a broadcast UDP packet
    */
@@ -88,7 +99,6 @@ public class DiscoverDevices extends Thread {
         socket.receive(packet);
         IMessage message = MessageFactory.receiveMessage(new DataInputStream (new ByteArrayInputStream(packet.getData(), 0, packet.getLength())));
         //Log.d(TAG, "Received broadcast message " + ((BroadcastMessage)message).getInfo());
-        ((MainActivity)context).processMessage(message);
       }
     } catch (SocketTimeoutException e) {
     	Log.d(TAG, "Receive timed out");
@@ -131,10 +141,10 @@ public class DiscoverDevices extends Thread {
 }
 
 
-class BroadcastListener extends DiscoverDevices {
+class BroadcastListener extends UDPListener {
 	
-	public BroadcastListener(WifiManager wifi, Activity context) {
-		super(wifi, context);
+	public BroadcastListener(WifiManager wifi) {
+		super(wifi);
 	}
 	
 	public void run() {

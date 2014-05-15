@@ -11,7 +11,7 @@ public class BroadcastMessage implements IMessage {
 	@Override
 	public int getMessageType() {
 		// Broadcast message type
-		return 0;
+		return IMessageTypes.BROADCAST_MESSAGE;
 	}
 	
 	public void setInfo(String info) {

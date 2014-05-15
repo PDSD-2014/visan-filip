@@ -1,7 +1,10 @@
 package com.pdsd.pixchange;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.ActivityManager.RunningServiceInfo;
 import android.content.Context;
+import android.content.Intent;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.util.Log;
@@ -12,67 +15,41 @@ import android.widget.TextView;
 public class MainActivity extends Activity {
 	
 	protected MainActivity context = this;
-	protected BroadcastListener broadcastListener = null;
+	protected Intent discoverDevicesService = null;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
-		broadcastListener = new BroadcastListener((WifiManager)this.getSystemService(Context.WIFI_SERVICE), this);
-		broadcastListener.start();
-		
-		Button b = (Button)findViewById(R.id.broadcastButton);
-		b.setOnClickListener(new ButtonListener());
-		
-		Button b1 = (Button)findViewById(R.id.broadcastReply);
-		b1.setOnClickListener(new ButtonListener());
+		// start discovering devices service
+		if (!isServiceRunning(DiscoverDevicesService.class)) {
+			discoverDevicesService = new Intent(this, DiscoverDevicesService.class);
+			startService(discoverDevicesService);
+		}
+		DiscoverDevicesService.parentActivity = MainActivity.this;
 		
 	}
 	
-	@Override
-	public void onBackPressed() {
-		try {
-			stopListeningBroadcast();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		super.onBackPressed();
-	}
 	
 	public void processMessage(IMessage message) {
 		if (message.getMessageType() == IMessageTypes.BROADCAST_MESSAGE) {
 			BroadcastMessage bm = (BroadcastMessage)message;
 			TextView tv = (TextView)findViewById(R.id.broadcastReceived);
 			Log.d("Message received on ", android.os.Build.MODEL + " " + bm.getInfo());
-			//daca las linia de mai jos, crapa socket-ul :-??
 			//tv.setText(bm.getInfo());
 		}
 		
 	}
 	
-	public void startListeningBroadcast() {
-		broadcastListener.start();
+	private boolean isServiceRunning(Class<?> cls) {
+		ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+		for (RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE))
+			if (cls.getName().equals(service.service.getClassName()))
+				return true;
+
+		return false;
 	}
 	
-	public void stopListeningBroadcast() {
-		if (broadcastListener != null && broadcastListener.getSocket() != null)
-			broadcastListener.closeSocket();
-	}
-	
-	class ButtonListener implements View.OnClickListener {
-		
-		@Override
-		public void onClick(View arg0) {
-			if (arg0 instanceof Button) {
-				if (((Button)arg0).getId() == R.id.broadcastButton) {
-					stopListeningBroadcast();
-					new DiscoverDevices((WifiManager) context.getSystemService(Context.WIFI_SERVICE), context).start();
-					//TextView tv = (TextView)findViewById(R.id.broadcastReceived);
-				}
-			}
-			
-		}
-	}
 	
 }
