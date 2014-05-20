@@ -5,11 +5,8 @@ import android.app.ActivityManager;
 import android.app.ActivityManager.RunningServiceInfo;
 import android.content.Context;
 import android.content.Intent;
-import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
@@ -37,7 +34,7 @@ public class MainActivity extends Activity {
 			BroadcastMessage bm = (BroadcastMessage)message;
 			TextView tv = (TextView)findViewById(R.id.broadcastReceived);
 			Log.d("Message received on ", android.os.Build.MODEL + " " + bm.getInfo());
-			//tv.setText(bm.getInfo());
+			tv.setText(bm.getInfo());
 		}
 		
 	}
@@ -49,6 +46,12 @@ public class MainActivity extends Activity {
 				return true;
 
 		return false;
+	}
+	
+	@Override
+	public void onDestroy() {
+		Log.d("State", "Application destroyed. Closing services");
+		stopService(new Intent(this, DiscoverDevicesService.class));
 	}
 	
 	

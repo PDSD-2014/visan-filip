@@ -12,6 +12,7 @@ import android.widget.Button;
 public class DiscoverDevicesService extends Service {
 
 	protected UDPListener udpListener = null;
+	protected TCPListener tcpListener = null;
 	protected static Activity parentActivity = null;
 	protected DiscoverDevicesService context = this;
 	protected boolean isRunning = false;
@@ -23,6 +24,9 @@ public class DiscoverDevicesService extends Service {
 		
 		udpListener = new BroadcastListener((WifiManager)this.getSystemService(Context.WIFI_SERVICE));
 		udpListener.start();
+		
+		tcpListener = new TCPListener(parentActivity);
+		tcpListener.start();
 		
 		Button b = (Button)parentActivity.findViewById(R.id.broadcastButton);
 		b.setOnClickListener(new ButtonListener());

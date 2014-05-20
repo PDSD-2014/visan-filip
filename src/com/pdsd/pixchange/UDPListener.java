@@ -14,10 +14,13 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import android.app.Activity;
 import android.net.DhcpInfo;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
@@ -27,9 +30,11 @@ public class UDPListener extends Thread {
   protected static final int DISCOVERY_PORT = 9080;
   protected static final int TIMEOUT_MS = 2000;
   protected static final String TAG = "tag";
+  protected static final String MESSAGE = "message";
   protected boolean isRunning = true;
   protected DatagramSocket socket = null;
-  private static WifiManager mWifi;
+  protected static WifiManager mWifi;
+  protected HashMap<String, InetAddress> discoveredDevices = new HashMap<String, InetAddress>();
 
   public UDPListener(WifiManager wifi) {
 	  mWifi = wifi;
@@ -41,7 +46,8 @@ public class UDPListener extends Thread {
 		  try {
 			socket = new DatagramSocket(DISCOVERY_PORT);
 		    socket.setBroadcast(true);
-			listenForResponses(socket);
+		    socket.setSoTimeout(TIMEOUT_MS);
+		    
 			sendUDPBroadcast();
 		  } catch (IOException e) {
 			e.printStackTrace();
@@ -57,7 +63,7 @@ public class UDPListener extends Thread {
 	      socket.setSoTimeout(TIMEOUT_MS);
 
 	      sendDiscoveryRequest(socket);
-	      listenForResponses(socket);
+	      //listenForResponses(socket);
 	      socket.close();
 	      Log.d(TAG, "No errors when sending broadcast");
 	    } catch (BindException b) {
@@ -73,8 +79,9 @@ public class UDPListener extends Thread {
    */
   protected void sendDiscoveryRequest(DatagramSocket socket) throws IOException {
     BroadcastMessage bm = new BroadcastMessage();
-    bm.setInfo("received broadcast");
-    bm.setAddress(InetAddress.getLocalHost());
+    bm.setInfo("Request to send picture");
+    bm.setIPAddress(InetAddress.getLocalHost());
+    bm.setPictureName(InetAddress.getLocalHost().hashCode() + "Pic001");
     Log.d(TAG, "Sending data " + bm.getMessageType());
     
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -82,8 +89,7 @@ public class UDPListener extends Thread {
     out = new ObjectOutputStream(bos);   
     out.writeObject(bm);
 
-    DatagramPacket packet = new DatagramPacket(bos.toByteArray(), bos.size(),
-        getBroadcastAddress(), DISCOVERY_PORT);
+    DatagramPacket packet = new DatagramPacket(bos.toByteArray(), bos.size(), getBroadcastAddress(), DISCOVERY_PORT);
     socket.send(packet);
     Log.d("Address + port: ", "sending message to address " + getBroadcastAddress().toString() + " and port " + DISCOVERY_PORT);
   }
@@ -98,17 +104,82 @@ public class UDPListener extends Thread {
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
         socket.receive(packet);
         IMessage message = MessageFactory.receiveMessage(new DataInputStream (new ByteArrayInputStream(packet.getData(), 0, packet.getLength())));
-        //Log.d(TAG, "Received broadcast message " + ((BroadcastMessage)message).getInfo());
+        int messageType = message.getMessageType();
+        switch (messageType) {
+        	case (IMessageTypes.BROADCAST_MESSAGE):
+        		processBroadcastMessage((BroadcastMessage)message);
+        	case (IMessageTypes.BROADCAST_REPLY_MESSAGE):
+        		processBroadcastReplyMessage((BroadcastReplyMessage)message);
+        	default:
+        		Log.d(MESSAGE, "Message of type " + messageType + " has been dumped");
+        }
       }
     } catch (SocketTimeoutException e) {
-    	Log.d(TAG, "Receive timed out");
+    	Log.d(TAG, "Receive timed out. Close socket and start listening for Broadcasts.");
+    	if (socket != null) {
+    		socket.close();
+    	}
+    	new UDPListener(mWifi).start();
+    	sendPicture();
     } catch (Exception e) {
     	Log.d(TAG, "Socket closed");
     }
   }
   
+  public void processBroadcastMessage(BroadcastMessage message) {
+	  BroadcastReplyMessage broadcastReplyMessage = new BroadcastReplyMessage();
+	  WifiInfo info = mWifi.getConnectionInfo();
+	  String address = info.getMacAddress();
+	  broadcastReplyMessage.setMACAddress(address);
+	  try {
+		broadcastReplyMessage.setIPAddress(InetAddress.getLocalHost());
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	    ObjectOutput out = null;
+	    out = new ObjectOutputStream(bos);
+	    out.writeObject(broadcastReplyMessage);
+	    
+	    //send reply through UDP -> packet loss
+	    /*DatagramPacket packet = new DatagramPacket(bos.toByteArray(), bos.size(), message.getIPAddress(), DISCOVERY_PORT);
+	    socket.send(packet);
+	    */
+	    
+	    //send reply through TCP -> more reliable
+	    Socket tcpSocket = new Socket(message.getIPAddress(), TCPListener.LISTENING_PORT);
+	    TCPConnection tcpConnection = new TCPConnection(tcpSocket, null);
+	    tcpConnection.start();
+	    tcpConnection.sendMessage(broadcastReplyMessage);
+	    
+	    
+	    Log.d("Address + port: ", "sending message to address " + message.getIPAddress().toString() + " and port " + DISCOVERY_PORT);
+	} catch (UnknownHostException e) {
+		e.printStackTrace();
+	} catch (IOException e) {
+		e.printStackTrace();
+	}
+	  	
+  }
+  
+  public void processBroadcastReplyMessage(BroadcastReplyMessage message) {
+	  discoveredDevices.put(message.getMACAddress(), message.getIPAddress());
+  }
+  
+  public void sendPicture() {
+	  // TODO algorithm for sending between multiple devices
+	  
+	  //for now send picture to every device.
+	  for (String macAddress : discoveredDevices.keySet()) {
+		  try {
+			Socket tcpSocket = new Socket(discoveredDevices.get(macAddress), TCPListener.LISTENING_PORT);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	  }
+	  
+	  
+  }
+  
   /**
-   * Calculate the broadcast IP we need to send the packet along..
+   * Calculate the broadcast IP we need to send the packet along
    */
   public static InetAddress getBroadcastAddress() throws IOException {
     DhcpInfo dhcp = mWifi.getDhcpInfo();
@@ -131,7 +202,6 @@ public class UDPListener extends Thread {
   
   public void closeSocket() {
 	  socket.close();
-	  isRunning = false;
   }
   
   public DatagramSocket getSocket() {
@@ -164,10 +234,10 @@ class BroadcastListener extends UDPListener {
 
 class TCPListener extends Thread {
 	
-	private static final int LISTENING_PORT = 9081;
-	private ServerSocket serverSocket;
-	private ArrayList<Socket> sockets;
-	private Activity context = null;
+	protected static final int LISTENING_PORT = 9081;
+	protected ServerSocket serverSocket;
+	protected ArrayList<Socket> sockets;
+	protected Activity context = null;
 	
 	public TCPListener(Activity context) {
 		sockets = new ArrayList<Socket>();
