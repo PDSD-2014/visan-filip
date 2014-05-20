@@ -7,6 +7,7 @@ public class BroadcastMessage implements IMessage {
 	private static final long serialVersionUID = 581876106458303281L;
 	protected String info = null;
 	protected InetAddress ipAddress = null;
+	protected String macAddress = null;
 	//hash MAC address + seq number
 	protected String pictureName = null;
 	
@@ -38,6 +39,14 @@ public class BroadcastMessage implements IMessage {
 	
 	public void setPictureName(String pictureName) {
 		this.pictureName = pictureName;
+	}
+	
+	public String getMACAddress() {
+		return macAddress;
+	}
+	
+	public void setMACAddress(String macAddress) {
+		this.macAddress = macAddress;
 	}
 
 }

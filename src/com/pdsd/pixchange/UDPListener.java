@@ -22,7 +22,9 @@ import android.app.Activity;
 import android.net.DhcpInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.text.format.Formatter;
 import android.util.Log;
+import android.widget.TextView;
 
 
 public class UDPListener extends Thread {
@@ -80,9 +82,12 @@ public class UDPListener extends Thread {
   protected void sendDiscoveryRequest(DatagramSocket socket) throws IOException {
     BroadcastMessage bm = new BroadcastMessage();
     bm.setInfo("Request to send picture");
-    bm.setIPAddress(InetAddress.getLocalHost());
+    
+    int ip = mWifi.getConnectionInfo().getIpAddress();
+    String ipAddress = Formatter.formatIpAddress(ip);
+    bm.setIPAddress(InetAddress.getByName(ipAddress));
+    bm.setMACAddress(mWifi.getConnectionInfo().getMacAddress());
     bm.setPictureName(InetAddress.getLocalHost().hashCode() + "Pic001");
-    Log.d(TAG, "Sending data " + bm.getMessageType());
     
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutput out = null;
@@ -97,8 +102,9 @@ public class UDPListener extends Thread {
   /**
    * Listen on socket for responses, timing out after TIMEOUT_MS
    */
-  protected void listenForResponses(DatagramSocket socket) throws IOException {
+  protected void listenForBroadcast(DatagramSocket socket) throws IOException {
     byte[] buf = new byte[2048];
+    Log.d("Connectivity", "Listening for broadcasts");
     try {
       while (isRunning) {
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
@@ -108,10 +114,13 @@ public class UDPListener extends Thread {
         switch (messageType) {
         	case (IMessageTypes.BROADCAST_MESSAGE):
         		processBroadcastMessage((BroadcastMessage)message);
+        		break;
         	case (IMessageTypes.BROADCAST_REPLY_MESSAGE):
         		processBroadcastReplyMessage((BroadcastReplyMessage)message);
+        		break;
         	default:
         		Log.d(MESSAGE, "Message of type " + messageType + " has been dumped");
+        		break;
         }
       }
     } catch (SocketTimeoutException e) {
@@ -121,36 +130,32 @@ public class UDPListener extends Thread {
     	}
     	new UDPListener(mWifi).start();
     	sendPicture();
-    } catch (Exception e) {
-    	Log.d(TAG, "Socket closed");
+    } catch (IOException e) {
+    	Log.d("Exception", e.getMessage());
     }
+    
   }
   
   public void processBroadcastMessage(BroadcastMessage message) {
-	  BroadcastReplyMessage broadcastReplyMessage = new BroadcastReplyMessage();
 	  WifiInfo info = mWifi.getConnectionInfo();
 	  String address = info.getMacAddress();
+	  if (address.equals(message.getMACAddress())) {
+		  Log.d("Message", "Duplicate message. Discarded.");
+		  return;
+	  }
+	  BroadcastReplyMessage broadcastReplyMessage = new BroadcastReplyMessage();
 	  broadcastReplyMessage.setMACAddress(address);
 	  try {
 		broadcastReplyMessage.setIPAddress(InetAddress.getLocalHost());
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-	    ObjectOutput out = null;
-	    out = new ObjectOutputStream(bos);
-	    out.writeObject(broadcastReplyMessage);
 	    
-	    //send reply through UDP -> packet loss
-	    /*DatagramPacket packet = new DatagramPacket(bos.toByteArray(), bos.size(), message.getIPAddress(), DISCOVERY_PORT);
-	    socket.send(packet);
-	    */
-	    
-	    //send reply through TCP -> more reliable
+	    //send reply through TCP -> more reliable than UDP
 	    Socket tcpSocket = new Socket(message.getIPAddress(), TCPListener.LISTENING_PORT);
 	    TCPConnection tcpConnection = new TCPConnection(tcpSocket, null);
 	    tcpConnection.start();
+	    Log.d("Address + port: ", "sending message to address " + message.getIPAddress().toString() + " and port " + TCPListener.LISTENING_PORT);
 	    tcpConnection.sendMessage(broadcastReplyMessage);
 	    
 	    
-	    Log.d("Address + port: ", "sending message to address " + message.getIPAddress().toString() + " and port " + DISCOVERY_PORT);
 	} catch (UnknownHostException e) {
 		e.printStackTrace();
 	} catch (IOException e) {
@@ -221,7 +226,7 @@ class BroadcastListener extends UDPListener {
 	    try {
 	      socket = new DatagramSocket(DISCOVERY_PORT);
 	      socket.setBroadcast(true);
-	      listenForResponses(socket);
+	      listenForBroadcast(socket);
 	    } catch (BindException b) {
 	    	if (socket != null)
 	    		socket.close();
@@ -248,13 +253,21 @@ class TCPListener extends Thread {
 		 try {
 			serverSocket = new ServerSocket(LISTENING_PORT);
 			while (true) {
-				Log.d("Connectivity", "Listening for broadcasts on port " + LISTENING_PORT);
+				Log.d("Connectivity", "Listening for tcp connections on port " + LISTENING_PORT);
 				Socket incomingConnection = serverSocket.accept();
-				Log.d("Message", "A message has arrived");
+				Log.d("Message", "A device is trying to connect");
 				sockets.add(incomingConnection);
 				TCPConnection connection = new TCPConnection(incomingConnection, context);
 				connection.start();
 			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void closeSocket() {
+		try {
+			serverSocket.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -286,14 +299,27 @@ class TCPConnection extends Thread {
 	  }
 	
 	public void run() {
+		init();
 		while (isRunning) {
 			IMessage message = receiveMessage();
-			((MainActivity)context).processMessage(message);
+			Log.d("Message", "Received message");
+			processMessage(message);
 		}
+	}
+	
+	public void processMessage(IMessage message) {
+		if (message.getMessageType() == IMessageTypes.BROADCAST_MESSAGE) {
+			BroadcastMessage bm = (BroadcastMessage)message;
+			//TextView tv = (TextView)findViewById(R.id.broadcastReceived);
+			Log.d("Message received on ", android.os.Build.MODEL + " " + bm.getInfo());
+			//tv.setText(bm.getInfo());
+		}
+		
 	}
 	
 	public IMessage receiveMessage() {
 	      synchronized (receiveLock) {
+	    	  Log.d("Message", "Receiving message");
 	           return MessageFactory.receiveMessage(dataInput);
 	      }
 	  }

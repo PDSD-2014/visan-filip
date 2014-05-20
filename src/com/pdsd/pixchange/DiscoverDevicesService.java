@@ -1,21 +1,25 @@
 package com.pdsd.pixchange;
 
+import java.io.IOException;
+
 import android.app.Activity;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.WifiManager;
 import android.os.IBinder;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 
 public class DiscoverDevicesService extends Service {
 
-	protected UDPListener udpListener = null;
-	protected TCPListener tcpListener = null;
+	protected static UDPListener udpListener = null;
+	protected static TCPListener tcpListener = null;
 	protected static Activity parentActivity = null;
 	protected DiscoverDevicesService context = this;
-	protected boolean isRunning = false;
+	protected static boolean isRunning = false;
 	
 	@Override
 	public void onCreate() {
@@ -32,16 +36,22 @@ public class DiscoverDevicesService extends Service {
 		b.setOnClickListener(new ButtonListener());
 	}
 	
-	public void startListeningBroadcast() {
+	public void onDestroy() {
+		Log.d("adsad","adsadsd");
+		udpListener.closeSocket();
+		tcpListener.closeSocket();
+	}
+	
+	public static void startListeningBroadcast() {
 		udpListener.start();
 	}
 	
-	public void stopListeningBroadcast() {
+	public static void stopListeningBroadcast() {
 		if (udpListener != null && udpListener.getSocket() != null)
 			udpListener.closeSocket();
 	}
 	
-	public void findDevices() {
+	public static void findDevices() {
 		new UDPListener((WifiManager) parentActivity.getSystemService(Context.WIFI_SERVICE)).start();
 	}
 	
@@ -56,9 +66,11 @@ class ButtonListener implements View.OnClickListener {
 		public void onClick(View arg0) {
 			if (arg0 instanceof Button) {
 				if (((Button)arg0).getId() == R.id.broadcastButton) {
-					stopListeningBroadcast();
-					findDevices();
-					
+					try {
+						udpListener.sendDiscoveryRequest(udpListener.getSocket());
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
 				}
 			}
 			

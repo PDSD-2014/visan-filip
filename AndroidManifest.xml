@@ -35,6 +35,11 @@
             android:name=".PhotoService"
             android:label="Pixchange receiver service" >
         </service>
+        
+         <service
+            android:name=".DiscoverDevicesService"
+            android:label="Pixchange network service" >
+        </service>
     </application>
 
 </manifest>

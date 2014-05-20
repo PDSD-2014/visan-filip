@@ -1,5 +1,6 @@
 package com.pdsd.pixchange;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutput;
@@ -54,9 +55,12 @@ public class MessageFactory {
 	  }
 	  
 	  public static void sendMessage(DataOutputStream dataOutput, IMessage message) {
-		  try {
-			ObjectOutput output = new ObjectOutputStream(dataOutput);
-			output.writeObject(message);
+		  try {		    
+		    ObjectOutputStream  oos = new 
+            ObjectOutputStream(dataOutput);
+		    oos.writeObject(message);
+		    oos.close();
+		    
 		} catch (IOException e) {
 			e.printStackTrace();
 		}  
