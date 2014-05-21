@@ -10,6 +10,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.StreamCorruptedException;
+import java.net.SocketException;
 
 public class MessageFactory {
 	
@@ -41,12 +42,19 @@ public class MessageFactory {
 	  
 	  public static IMessage receiveMessage(DataInputStream dataInput) {
 		  try {
-			  ObjectInputStream input = new ObjectInputStream(dataInput);
-			  IMessage message = (IMessage)input.readObject();
-			  return message;
+			  if (dataInput != null) {
+				  ObjectInputStream input = new ObjectInputStream(dataInput);
+				  IMessage message = (IMessage)input.readObject();
+				  return message;
+			  }
 		  } catch (StreamCorruptedException e) {
 			  e.printStackTrace();
 		  } catch (IOException e) {
+			  try {
+				dataInput.close();
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
 			  e.printStackTrace();
 		  } catch (ClassNotFoundException e) {
 			  e.printStackTrace();
@@ -56,10 +64,11 @@ public class MessageFactory {
 	  
 	  public static void sendMessage(DataOutputStream dataOutput, IMessage message) {
 		  try {		    
-		    ObjectOutputStream  oos = new 
-            ObjectOutputStream(dataOutput);
-		    oos.writeObject(message);
-		    oos.close();
+			  if(message != null) {
+				  ObjectOutput output = new ObjectOutputStream(dataOutput);
+				  output.writeObject(message);
+				  output.flush();
+			  }
 		    
 		} catch (IOException e) {
 			e.printStackTrace();

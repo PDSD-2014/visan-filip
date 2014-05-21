@@ -23,7 +23,6 @@ public class DiscoverDevicesService extends Service {
 	
 	@Override
 	public void onCreate() {
-		
 		isRunning = true;
 		
 		udpListener = new BroadcastListener((WifiManager)this.getSystemService(Context.WIFI_SERVICE));
@@ -37,8 +36,15 @@ public class DiscoverDevicesService extends Service {
 	}
 	
 	public void onDestroy() {
-		Log.d("adsad","adsadsd");
+		Log.d("Socket", "Closing sockets");
 		udpListener.closeSocket();
+		for(int i = 0 ; i < tcpListener.getSockets().size() ; i++) {
+			try {
+				tcpListener.getSockets().get(i).close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 		tcpListener.closeSocket();
 	}
 	
@@ -66,11 +72,16 @@ class ButtonListener implements View.OnClickListener {
 		public void onClick(View arg0) {
 			if (arg0 instanceof Button) {
 				if (((Button)arg0).getId() == R.id.broadcastButton) {
-					try {
-						udpListener.sendDiscoveryRequest(udpListener.getSocket());
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
+					new Thread()
+					{
+					    public void run() {
+					    	try {
+								udpListener.sendDiscoveryRequest(udpListener.getSocket());
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+					    }
+					}.start();
 				}
 			}
 			

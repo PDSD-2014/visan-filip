@@ -1,5 +1,7 @@
 package com.pdsd.pixchange;
 
+import com.pdsd.pixchange.DiscoverDevicesService.ButtonListener;
+
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningServiceInfo;
@@ -9,6 +11,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
@@ -32,6 +37,18 @@ public class MainActivity extends Activity {
 			Log.d("service", "Starting discovery service");
 		}
 		
+		Button b = (Button)findViewById(R.id.broadcastReply);
+		b.setOnClickListener(new OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				Log.d("button", "button clicked!!");
+				if (isServiceRunning(DiscoverDevicesService.class)) {
+					stopService(new Intent(v.getContext(), DiscoverDevicesService.class));
+					Log.d("Service", "Service stopped");
+				}
+			}
+		});
 	}
 	
 	

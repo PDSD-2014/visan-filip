@@ -1,24 +1,35 @@
 package com.pdsd.pixchange;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.io.PrintStream;
 import java.net.BindException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
+import android.graphics.BitmapFactory;
 import android.net.DhcpInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -87,7 +98,7 @@ public class UDPListener extends Thread {
     String ipAddress = Formatter.formatIpAddress(ip);
     bm.setIPAddress(InetAddress.getByName(ipAddress));
     bm.setMACAddress(mWifi.getConnectionInfo().getMacAddress());
-    bm.setPictureName(InetAddress.getLocalHost().hashCode() + "Pic001");
+    //bm.setPictureName(InetAddress.getLocalHost().hashCode() + "Pic001");
     
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutput out = null;
@@ -146,7 +157,9 @@ public class UDPListener extends Thread {
 	  BroadcastReplyMessage broadcastReplyMessage = new BroadcastReplyMessage();
 	  broadcastReplyMessage.setMACAddress(address);
 	  try {
-		broadcastReplyMessage.setIPAddress(InetAddress.getLocalHost());
+		  int ip = mWifi.getConnectionInfo().getIpAddress();
+		  String ipAddress = Formatter.formatIpAddress(ip);
+		  broadcastReplyMessage.setIPAddress(InetAddress.getByName(ipAddress));
 	    
 	    //send reply through TCP -> more reliable than UDP
 	    Socket tcpSocket = new Socket(message.getIPAddress(), TCPListener.LISTENING_PORT);
@@ -178,9 +191,7 @@ public class UDPListener extends Thread {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	  }
-	  
-	  
+	  }  
   }
   
   /**
@@ -252,8 +263,8 @@ class TCPListener extends Thread {
 	public void run() {
 		 try {
 			serverSocket = new ServerSocket(LISTENING_PORT);
+			Log.d("Connectivity", "Listening for tcp connections on port " + LISTENING_PORT);
 			while (true) {
-				Log.d("Connectivity", "Listening for tcp connections on port " + LISTENING_PORT);
 				Socket incomingConnection = serverSocket.accept();
 				Log.d("Message", "A device is trying to connect");
 				sockets.add(incomingConnection);
@@ -272,6 +283,10 @@ class TCPListener extends Thread {
 			e.printStackTrace();
 		}
 	}
+	
+	public ArrayList<Socket> getSockets() {
+		return sockets;
+	}
 }
 
 
@@ -288,39 +303,87 @@ class TCPConnection extends Thread {
 	public TCPConnection(Socket socket, Activity context) {
 		this.socket = socket;
 		this.context = context;
+		try {
+			dataInput = new DataInputStream(socket.getInputStream());
+			dataOutput = new DataOutputStream(socket.getOutputStream());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    
 	}
 	
-	public void init() {
-	    try {
-	      dataInput = new DataInputStream(socket.getInputStream());
-	      dataOutput = new DataOutputStream(socket.getOutputStream());
-	    } catch (IOException e) {
-	    }
-	  }
-	
 	public void run() {
-		init();
 		while (isRunning) {
 			IMessage message = receiveMessage();
-			Log.d("Message", "Received message");
-			processMessage(message);
+			Log.d("Message", "Received message ");
+			try {
+				sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			if (message != null)
+				processMessage(message);
 		}
+		
 	}
 	
 	public void processMessage(IMessage message) {
 		if (message.getMessageType() == IMessageTypes.BROADCAST_MESSAGE) {
 			BroadcastMessage bm = (BroadcastMessage)message;
-			//TextView tv = (TextView)findViewById(R.id.broadcastReceived);
-			Log.d("Message received on ", android.os.Build.MODEL + " " + bm.getInfo());
-			//tv.setText(bm.getInfo());
+			Log.d("Message", android.os.Build.MODEL + " " + bm.getInfo());
 		}
+		if (message.getMessageType() == IMessageTypes.BROADCAST_REPLY_MESSAGE) {
+			BroadcastReplyMessage bm = (BroadcastReplyMessage)message;
+			Log.d("Message", "Receied message from " + bm.getIPAddress());
+			
+			//send image
+		    
+		    String filepath = "/sdcard/DCIM/Camera/IMG053.jpg";
+		    File imagefile = new File(filepath);
+		    FileInputStream fis = null;
+		    try {
+		        fis = new FileInputStream(imagefile);
+		    } catch (FileNotFoundException e) {
+		    	Log.d("Image","Could not find image.");
+		        e.printStackTrace();
+		    }
+		    Bitmap bitmap = BitmapFactory.decodeStream(fis);
+		    byte[] imgbyte = getBytesFromBitmap(bitmap);
+		    ImageMessage image = new ImageMessage();
+		    image.setImage(imgbyte);
+		    image.setImageName("IMG053_REMOTE.jpg");
+		    Log.d("Image", "Sending first image");
+		    sendMessage(image); 
+		}
+		if (message.getMessageType() == IMessageTypes.IMAGE_MESSAGE) {
+			Log.d("Image", "An image has arrived.");
+			ImageMessage image = (ImageMessage)message;
+			Log.d("Image", "ImageMessage was successfully read.");
+			try {
+				File newFile = new File("/storage/extSdCard/DCIM/Camera/" + image.getImageName());
+				FileOutputStream fos = new FileOutputStream("/storage/extSdCard/DCIM/Camera/" + image.getImageName());
+				Log.d("Image", "Writing image to file");
+				Bitmap bmp=BitmapFactory.decodeByteArray(image.getImage(),0,image.getImage().length);
+				bmp.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			}
+		}
+
 		
+	}
+	
+	public byte[] getBytesFromBitmap(Bitmap bitmap) {
+	    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+	    bitmap.compress(CompressFormat.JPEG, 70, stream);
+	    return stream.toByteArray();
 	}
 	
 	public IMessage receiveMessage() {
 	      synchronized (receiveLock) {
-	    	  Log.d("Message", "Receiving message");
-	           return MessageFactory.receiveMessage(dataInput);
+	    	  //Log.d("Message", "Receiving message");
+	    	  return MessageFactory.receiveMessage(dataInput);
 	      }
 	  }
 	
@@ -339,6 +402,7 @@ class TCPConnection extends Thread {
 	}
 	
 	public void closeSocket() {
+		Log.d("Socket", "Closing sockets");
 		isRunning = false;
 	    try {
 			socket.close();
