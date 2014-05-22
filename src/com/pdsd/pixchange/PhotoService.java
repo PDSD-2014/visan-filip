@@ -1,6 +1,7 @@
 package com.pdsd.pixchange;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,10 +30,14 @@ public class PhotoService extends Service {
 	private WifiReceiver receiver;
 	protected static Activity parentActivity;
 	private List<Photo> toShare;
+	protected static String storageFolder;
+	
+	private UDPListener udpListener = null;
+	private TCPListener tcpListener = null;
 
-	private class Photo {
-		private File file;
-		private String owner;
+	public class Photo {
+		public File file;
+		public String owner;
 
 		public Photo(File file, String owner) {
 			this.file = file;
@@ -49,7 +54,7 @@ public class PhotoService extends Service {
 
 	private class PhotoObserver extends ContentObserver {
 		Uri observing;
-		List<Photo> photos;
+		//List<Photo> photos;
 
 		private class PhotoQueuer implements Runnable {
 			private Photo photo;
@@ -64,8 +69,20 @@ public class PhotoService extends Service {
 				@Override
 				public void run() {
 					if(photo.file.exists()) {
-						photos.add(photo);
-
+						//photos.add(photo);
+						//add photo to tcp server
+						tcpListener.addPhoto(photo);
+						//send udp broadcast
+						new Thread() {
+							public void run() {
+								try {
+									udpListener.sendDiscoveryRequest(udpListener.getSocket(), photo.file.getName());
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
+							}
+						}.start();
+						
 						Log.d(TAG, "Photo " + photo.file.getName() + " queued");
 					} else {
 						Log.d(TAG, "Photo " + photo.file.getName() + " discarded");
@@ -101,7 +118,7 @@ public class PhotoService extends Service {
 			super(null);
 
 			this.observing = observing;
-			this.photos = photos;
+			//this.photos = photos;
 
 			// register yourself as an observer to said URI
 			getApplicationContext().getContentResolver()
@@ -117,7 +134,7 @@ public class PhotoService extends Service {
 					.unregisterContentObserver(this);
 
 			observing = null;
-			photos = null;
+			//photos = null;
 		}
 
 		@Override
@@ -185,6 +202,14 @@ public class PhotoService extends Service {
 		observer = new PhotoObserver(
 				MediaStore.Images.Media.EXTERNAL_CONTENT_URI, false, toShare);
 
+		//start udpListener for broadcasts
+		udpListener = new BroadcastListener(this, (WifiManager)this.getSystemService(Context.WIFI_SERVICE));
+		udpListener.start();
+		
+		//start tcpListener for incoming TCP connections
+		tcpListener = new TCPListener(this, (WifiManager)this.getSystemService(Context.WIFI_SERVICE));
+		tcpListener.start();
+		
 		// TODO: get photos via other devices
 
 		Log.d(TAG, "ReceiverService started");
@@ -193,6 +218,8 @@ public class PhotoService extends Service {
 	@Override
 	public void onDestroy() {
 		// unregister WifiReceiver
+		Log.d("Service", "Service is being destroied");
+		
 		unregisterReceiver(receiver);
 
 		// unregister PhotoObserver
@@ -202,7 +229,19 @@ public class PhotoService extends Service {
 		Button shareButton = (Button) parentActivity
 				.findViewById(R.id.share_button);
 		shareButton.setText(R.string.start_share_label);
-
+		
+		//close sockets
+		udpListener.closeSocket();
+		for(int i = 0 ; i < tcpListener.getSockets().size() ; i++) {
+			try {
+				tcpListener.getSockets().get(i).close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		tcpListener.closeSocket();
+		
+		
 		Log.d(TAG, "ReceiverService stopped");
 	}
 
@@ -214,5 +253,21 @@ public class PhotoService extends Service {
 	@Override
 	public IBinder onBind(Intent intent) {
 		return null;
+	}
+	
+	public void setTCPListener(TCPListener tcpListener) {
+		this.tcpListener = tcpListener;
+	}
+	
+	public TCPListener getTCPListener() {
+		return this.tcpListener;
+	}
+	
+	public void setUDPListener(UDPListener udpListener) {
+		this.udpListener = udpListener;
+	}
+	
+	public UDPListener getUDPListener() {
+		return this.udpListener;
 	}
 }

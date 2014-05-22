@@ -8,8 +8,7 @@ public class BroadcastMessage implements IMessage {
 	protected String info = null;
 	protected InetAddress ipAddress = null;
 	protected String macAddress = null;
-	//hash MAC address + seq number
-	protected String pictureName = null;
+	protected String photoName = null;
 	
 	@Override
 	public int getMessageType() {
@@ -33,12 +32,12 @@ public class BroadcastMessage implements IMessage {
 		return ipAddress;
 	}
 	
-	public String getPictureName() {
-		return pictureName;
+	public String getPhotoName() {
+		return photoName;
 	}
 	
-	public void setPictureName(String pictureName) {
-		this.pictureName = pictureName;
+	public void setPhotoName(String pictureName) {
+		this.photoName = pictureName;
 	}
 	
 	public String getMACAddress() {

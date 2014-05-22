@@ -1,5 +1,7 @@
 package com.pdsd.pixchange;
 
+import java.io.File;
+
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningServiceInfo;
@@ -9,6 +11,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -26,9 +29,6 @@ public class Pixchange extends Activity {
 
 	// UI elements
 	private Button shareButton;
-	
-	// TODO: remove this
-	private Button DEBUG;
 
 	// locals
 	private Boolean running = false;
@@ -86,7 +86,6 @@ public class Pixchange extends Activity {
 							PhotoService.parentActivity = Pixchange.this;
 
 							// TODO: start transmitter service
-
 							running = true;
 							shareButton.setText(R.string.stop_share_label);
 						}
@@ -126,6 +125,19 @@ public class Pixchange extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_ui);
 
+		
+		//create application folder
+		String storageFolder = Environment.getExternalStorageDirectory() + "/Pixchange/";
+		File mydir = new File(storageFolder);
+		if(!mydir.exists()) {
+		    mydir.mkdirs();
+		    Log.d("Folder","Created folder " + storageFolder);
+		}
+		else
+		    Log.d("error", "dir. already exists");
+		PhotoService.storageFolder = storageFolder;
+		
+		
 		// check if ReceiverService is running
 		running = isServiceRunning(PhotoService.class);
 
@@ -136,15 +148,5 @@ public class Pixchange extends Activity {
 			shareButton.setText(R.string.start_share_label);
 		else
 			shareButton.setText(R.string.stop_share_label);
-		
-		// TODO: remove this
-		DEBUG = (Button)findViewById(R.id.DEBUG);
-		DEBUG.setOnClickListener(new OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				startActivity(new Intent(v.getContext(), MainActivity.class));
-			}
-		});
 	}
 }

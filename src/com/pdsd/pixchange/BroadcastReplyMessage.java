@@ -8,6 +8,7 @@ public class BroadcastReplyMessage implements IMessage {
 	private static final long serialVersionUID = 1L;
 	protected String macAddress = null;
 	protected InetAddress ipAddress = null;
+	protected String photoName = null;
 	
 	
 	@Override
@@ -29,5 +30,13 @@ public class BroadcastReplyMessage implements IMessage {
 	
 	public InetAddress getIPAddress() {
 		return ipAddress;
+	}
+	
+	public String getPhotoName() {
+		return photoName;
+	}
+	
+	public void setPhotoName(String pictureName) {
+		this.photoName = pictureName;
 	}
 }

@@ -1,6 +1,5 @@
 package com.pdsd.pixchange;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutput;
@@ -10,7 +9,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.StreamCorruptedException;
-import java.net.SocketException;
 
 public class MessageFactory {
 	
