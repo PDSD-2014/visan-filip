@@ -208,6 +208,7 @@ public class PhotoService extends Service {
 		
 		//start tcpListener for incoming TCP connections
 		tcpListener = new TCPListener(this, (WifiManager)this.getSystemService(Context.WIFI_SERVICE));
+		tcpListener.setStorageFolder(storageFolder);
 		tcpListener.start();
 		
 		// TODO: get photos via other devices

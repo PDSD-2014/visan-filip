@@ -16,13 +16,6 @@
         android:layout_centerVertical="true"
         android:text="@string/start_share_label" />
 
-    <Button
-        android:id="@+id/DEBUG"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/share_button"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="36dp"
-        android:text="DEBUG" />
+
 
 </RelativeLayout>

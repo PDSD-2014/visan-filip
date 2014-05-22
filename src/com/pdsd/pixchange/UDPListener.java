@@ -19,7 +19,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import com.pdsd.pixchange.PhotoService.Photo;
@@ -229,7 +228,7 @@ class TCPListener extends Thread {
 		Socket tcpSocket = null;
 		try {
 			tcpSocket = new Socket(ipAddress, TCPListener.LISTENING_PORT);
-			TCPConnection tcpConnection = new TCPConnection(tcpSocket, null);
+			TCPConnection tcpConnection = new TCPConnection(tcpSocket, this);
 			tcpConnection.start();
 			Log.d("Address + port: ", "sending message to address " + ipAddress.toString() + " and port " + TCPListener.LISTENING_PORT);
 			tcpConnection.sendMessage(broadcastReplyMessage);
@@ -351,15 +350,17 @@ class TCPConnection extends Thread {
 			ImageMessage image = (ImageMessage)message;
 			Log.d("Image", "An image has been received from " + image.getIPAddress());
 			try {
-				java.util.Date date= new java.util.Date();
-				String timestamp = new Timestamp(date.getTime()).toString();
-				File newFile = new File(context.getStorageFolder() + image.getPhotoName() + timestamp);
+				File newFile = new File(context.getStorageFolder() + "/" + image.getPhotoName());
 				FileOutputStream fos = new FileOutputStream(newFile);
 				Log.d("Image", "Writing image to sdCard");
 				Bitmap bmp=BitmapFactory.decodeByteArray(image.getPhoto(),0,image.getPhoto().length);
 				bmp.compress(Bitmap.CompressFormat.JPEG, 100, fos);
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
+			} catch (NullPointerException e) {
+				if (context == null) {
+					Log.d("Context", "context is null");
+				}
 			}
 		}
 
