@@ -29,7 +29,7 @@ public class Pixchange extends Activity {
 
 	// UI elements
 	private Button shareButton;
-
+	private WifiManager.WifiLock lock;
 	// locals
 	private Boolean running = false;
 
@@ -85,6 +85,10 @@ public class Pixchange extends Activity {
 									PhotoService.class));
 							PhotoService.parentActivity = Pixchange.this;
 
+							//put wifi lock
+							lock = ((WifiManager) v.getContext().getSystemService(Context.WIFI_SERVICE)).createWifiLock("MyWifiLock");
+							lock.acquire();
+							
 							// TODO: start transmitter service
 							running = true;
 							shareButton.setText(R.string.stop_share_label);
@@ -94,9 +98,11 @@ public class Pixchange extends Activity {
 			} else {
 				// stop receiver service
 				stopService(new Intent(v.getContext(), PhotoService.class));
-
-				// TODO: stop transmitter service
-
+				if (lock != null) {
+					lock.release();
+						Log.d("WiFi", "releasing lock");
+				}
+				
 				running = false;
 				shareButton.setText(R.string.start_share_label);
 			}
@@ -133,8 +139,6 @@ public class Pixchange extends Activity {
 		    mydir.mkdirs();
 		    Log.d("Folder","Created folder " + storageFolder);
 		}
-		else
-		    Log.d("error", "dir. already exists");
 		PhotoService.storageFolder = storageFolder;
 		
 		

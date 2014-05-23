@@ -17,11 +17,14 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
+
 import com.pdsd.pixchange.PhotoService.Photo;
+
 import android.app.Service;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
@@ -229,11 +232,11 @@ class TCPListener extends Thread {
 		try {
 			tcpSocket = new Socket(ipAddress, TCPListener.LISTENING_PORT);
 			TCPConnection tcpConnection = new TCPConnection(tcpSocket, this);
+			sockets.add(tcpSocket);
 			tcpConnection.start();
 			Log.d("Address + port: ", "sending message to address " + ipAddress.toString() + " and port " + TCPListener.LISTENING_PORT);
 			tcpConnection.sendMessage(broadcastReplyMessage);
 		} catch (IOException e) {
-			e.printStackTrace();
 		}
 	}
 	
@@ -303,15 +306,18 @@ class TCPConnection extends Thread {
 	public void run() {
 		while (isRunning) {
 			IMessage message = receiveMessage();
-			try {
-				sleep(500);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			if (message == null) {
+				isRunning = false;
+				try {
+					socket.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
-			if (message != null)
+			else {
 				processMessage(message);
+			}
 		}
-		
 	}
 	
 	public void processMessage(IMessage message) {
@@ -355,16 +361,24 @@ class TCPConnection extends Thread {
 				Log.d("Image", "Writing image to sdCard");
 				Bitmap bmp=BitmapFactory.decodeByteArray(image.getPhoto(),0,image.getPhoto().length);
 				bmp.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+				isRunning = false;
+				socket.close();
+				for (int i = 0 ; i < context.getSockets().size(); i++) {
+					if (context.getSockets().get(i) == socket) {
+						context.getSockets().remove(i);
+						break;
+					}
+				}
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
 			} catch (NullPointerException e) {
 				if (context == null) {
 					Log.d("Context", "context is null");
 				}
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
-
-		
 	}
 	
 	public byte[] getBytesFromBitmap(Bitmap bitmap) {

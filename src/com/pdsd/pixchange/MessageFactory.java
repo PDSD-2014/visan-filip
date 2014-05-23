@@ -9,6 +9,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.StreamCorruptedException;
+import java.net.SocketException;
 
 public class MessageFactory {
 	
@@ -47,15 +48,14 @@ public class MessageFactory {
 			  }
 		  } catch (StreamCorruptedException e) {
 			  e.printStackTrace();
+			  return null; 
+		  } catch (SocketException e) {
+			  return null; 
 		  } catch (IOException e) {
-			  try {
-				dataInput.close();
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
-			  e.printStackTrace();
+			  return null; 
 		  } catch (ClassNotFoundException e) {
 			  e.printStackTrace();
+			  return null; 
 		  }
 		  return null;  
 	  }

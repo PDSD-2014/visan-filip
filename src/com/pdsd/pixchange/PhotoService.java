@@ -219,7 +219,7 @@ public class PhotoService extends Service {
 	@Override
 	public void onDestroy() {
 		// unregister WifiReceiver
-		Log.d("Service", "Service is being destroied");
+		Log.d("Service", "Service is being destroyed");
 		
 		unregisterReceiver(receiver);
 
